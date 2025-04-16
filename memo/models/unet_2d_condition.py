@@ -1007,7 +1007,7 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
             aug_emb, hint = self.add_embedding(image_embs, hint)
             sample = torch.cat([sample, hint], dim=1)
 
-        emb = emb + aug_emb if aug_emb is not None else emb
+        emb = emb + aug_emb if aug_emb is not None else emb # at this point this is just time diffusion step embedding
 
         if self.time_embed_act is not None:
             emb = self.time_embed_act(emb)

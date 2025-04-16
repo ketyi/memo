@@ -123,7 +123,7 @@ class MEMOModel(nn.Module):
             ref_features = self.reference_net(
                 ref_image_latents,
                 ref_timesteps,
-                encoder_hidden_states=face_emb,
+                encoder_hidden_states=face_emb, # the conditioning text embeddings are replaced to face embeddings
                 return_dict=False,
             )
         else:
@@ -490,7 +490,7 @@ def main():
                     pixel_values_ref_img = batch["pixel_values_ref_img"].to(dtype=weight_dtype)
                     # Initialize the motion frames as zero maps
                     if start_frame:
-                        pixel_values_ref_img[:, 1:] = 0.0
+                        pixel_values_ref_img[:, 1:] = 0.0 # CFG for the previous conditions for the init window
 
                     ref_img_and_motion = rearrange(pixel_values_ref_img, "b f c h w -> (b f) c h w")
                     ref_image_latents = vae.encode(ref_img_and_motion).latent_dist.sample()

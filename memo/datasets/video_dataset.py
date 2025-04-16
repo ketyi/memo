@@ -81,9 +81,9 @@ class VideoDataset(Dataset):
         ).unsqueeze(
             1
         ) + indices.unsqueeze(0)
-        audio_emb = full_audio_emb[center_indices]  # (f, 5, 12, 768)
+        audio_emb = full_audio_emb[center_indices]  # (f, 5, 12, 768) # why do we need these 5 different sequence variants?
 
-        if torch.rand(1).item() < drop_rate:
+        if torch.rand(1).item() < drop_rate: # 5% audio augmentation
             for i in range(self.audio_margin):
                 audio_emb[i, : self.audio_margin - i] = audio_emb[i, self.audio_margin - i]
 
@@ -104,7 +104,7 @@ class VideoDataset(Dataset):
             if torch.rand(1).item() < drop_rate:
                 pixel_values_motion = pixel_values[0].unsqueeze(0).repeat(self.num_past_frames, 1, 1, 1)
 
-            pixel_values_ref_img = torch.cat([pixel_values_ref_img, pixel_values_motion], dim=0)
+            pixel_values_ref_img = torch.cat([pixel_values_ref_img, pixel_values_motion], dim=0) # concat of a ref image and past frames. sometimes (5%) the past frames are just the repeated first frame
 
         del video_reader
 

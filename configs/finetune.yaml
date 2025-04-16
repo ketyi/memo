@@ -22,7 +22,7 @@ lr_warmup_steps: 0
 
 seed: 42
 mixed_precision: bf16
-use_8bit_adam: false
+use_8bit_adam: true
 allow_tf32: true
 use_ema: false
 adam_beta1: 0.9
