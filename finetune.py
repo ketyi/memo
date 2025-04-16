@@ -32,6 +32,8 @@ from memo.models.image_proj import ImageProjModel
 from memo.models.unet_2d_condition import UNet2DConditionModel
 from memo.models.unet_3d import UNet3DConditionModel
 
+normal_repr = torch.Tensor.__repr__
+torch.Tensor.__repr__ = lambda self: f"{self.shape}_{normal_repr(self)}"
 
 warnings.filterwarnings("ignore")
 
@@ -111,7 +113,7 @@ class MEMOModel(nn.Module):
             audio_emb = self.audio_proj(audio_emb)
 
         # condition forward
-        ref_timesteps = torch.zeros_like(timesteps[0] if isinstance(timesteps, list) else timesteps)
+        ref_timesteps = torch.zeros_like(timesteps[0] if isinstance(timesteps, list) else timesteps) # ref_timesteps is always 0 meaning that we are at the last denoising iteration
         ref_timesteps = repeat(
             ref_timesteps,
             "b -> (repeat b)",

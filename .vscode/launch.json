@@ -30,6 +30,30 @@
                 "--config", "configs/finetune.yaml",
                 "--exp_name", "finetune"
             ]
+        },
+        {
+            "name": "Python Debugger: calculate_durations.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/calculate_durations.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "data/video"
+            ]
+        },
+        {
+            "name": "Python Debugger: prepare_data.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/prepare_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--input_dir", "data/video",
+                "--output_dir", "data/embedding",
+                "--misc_model_dir", "checkpoints"
+            ]
         }
     ]
 }
