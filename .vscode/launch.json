@@ -14,8 +14,8 @@
             "justMyCode": false,
             "args": [
                 "--config", "configs/inference.yaml",
-                "--input_image", "/home/istvan/github/float/vecsei.jpg",
-                "--input_audio", "/home/istvan/github/float/hope.wav",
+                "--input_image", "/home/istvan/github/memo/data/frames/frame_001.png",
+                "--input_audio", "/home/istvan/github/float/crying_talk.wav",
                 "--output_dir", "outputs"
             ]
         },
@@ -28,7 +28,7 @@
             "justMyCode": false,
             "args": [
                 "--config", "configs/finetune.yaml",
-                "--exp_name", "finetune"
+                "--exp_name", "finetune_dominik_reference_net_only"
             ]
         },
         {
