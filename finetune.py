@@ -17,7 +17,7 @@ import transformers
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import ProjectConfiguration, set_seed
-from diffusers import AutoencoderKL, FlowMatchEulerDiscreteScheduler
+from diffusers import AutoencoderKL, FlowMatchEulerDiscreteScheduler, StableDiffusionPipeline
 from diffusers.optimization import get_scheduler
 from diffusers.utils.import_utils import is_xformers_available
 from einops import rearrange, repeat
@@ -30,10 +30,24 @@ from memo.datasets.video_dataset import VideoDataset
 from memo.models.audio_proj import AudioProjModel
 from memo.models.image_proj import ImageProjModel
 from memo.models.unet_2d_condition import UNet2DConditionModel
+# from diffusers import UNet2DConditionModel
+
 from memo.models.unet_3d import UNet3DConditionModel
+
+from peft import LoraConfig
+from peft.utils import get_peft_model_state_dict
+from diffusers.training_utils import cast_training_params
+from diffusers.utils.torch_utils import is_compiled_module
+from diffusers.utils import convert_state_dict_to_diffusers
+
 
 normal_repr = torch.Tensor.__repr__
 torch.Tensor.__repr__ = lambda self: f"{self.shape}_{normal_repr(self)}"
+
+# I'm going to try a LORA adapter for the spatial U-Nets
+# https://machinelearningmastery.com/fine-tuning-stable-diffusion-with-lora/
+# https://huggingface.co/docs/transformers/main/peft
+# https://huggingface.co/docs/diffusers/en/training/lora
 
 warnings.filterwarnings("ignore")
 
@@ -83,7 +97,7 @@ class MEMOModel(nn.Module):
         self,
         reference_net: UNet2DConditionModel,
         diffusion_net: UNet3DConditionModel,
-        image_proj,
+        image_proj, # this is projecting the face embedding
         audio_proj,
     ):
         super().__init__()
@@ -156,6 +170,11 @@ def main():
         log_with="wandb",
         project_config=accelerator_project_config,
     )
+    
+    def unwrap_model(model):
+        model = accelerator.unwrap_model(model)
+        model = model._orig_mod if is_compiled_module(model) else model
+        return model
 
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -240,6 +259,19 @@ def main():
         weight_dtype = torch.bfloat16
         config.mixed_precision = accelerator.mixed_precision
 
+    use_lora = True
+    if use_lora:
+        unet_lora_config = LoraConfig(
+            r=4,
+            lora_alpha=4,
+            init_lora_weights="gaussian",
+            target_modules=["to_k", "to_q", "to_v", "to_out.0"],
+        )
+        
+        # maybe this should be later down there
+        # Add adapter and make sure the trainable params are in float32.
+        reference_net.add_adapter(unet_lora_config)
+    
     model = MEMOModel(
         reference_net,
         diffusion_net,
@@ -247,6 +279,12 @@ def main():
         audio_proj,
     ).to(dtype=weight_dtype)
     model.train()
+
+    if use_lora:
+        if accelerator.mixed_precision == "fp16":
+            # only upcast trainable parameters (LoRA) into fp32
+            cast_training_params(reference_net, dtype=torch.float32)
+
 
     if config.enable_xformers_memory_efficient_attention:
         if is_xformers_available():
@@ -594,6 +632,19 @@ def main():
                         save_path = os.path.join(config.output_dir, f"checkpoint-{global_step}")
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
+
+                        unwrapped_unet = unwrap_model(reference_net)
+                        unet_lora_state_dict = convert_state_dict_to_diffusers(
+                            get_peft_model_state_dict(unwrapped_unet)
+                        )
+
+                        StableDiffusionPipeline.save_lora_weights(
+                            save_directory=save_path,
+                            unet_lora_layers=unet_lora_state_dict,
+                            safe_serialization=True,
+                        )
+
+                        logger.info(f"Saved lora state to {save_path}")
 
             if global_step >= config.max_train_steps:
                 break
