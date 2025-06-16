@@ -259,7 +259,7 @@ def main():
         weight_dtype = torch.bfloat16
         config.mixed_precision = accelerator.mixed_precision
 
-    use_lora = True
+    use_lora = False
     if use_lora:
         unet_lora_config = LoraConfig(
             r=4,
@@ -633,18 +633,19 @@ def main():
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
-                        unwrapped_unet = unwrap_model(reference_net)
-                        unet_lora_state_dict = convert_state_dict_to_diffusers(
-                            get_peft_model_state_dict(unwrapped_unet)
-                        )
+                        if use_lora:
+                            unwrapped_unet = unwrap_model(reference_net)
+                            unet_lora_state_dict = convert_state_dict_to_diffusers(
+                                get_peft_model_state_dict(unwrapped_unet)
+                            )
 
-                        StableDiffusionPipeline.save_lora_weights(
-                            save_directory=save_path,
-                            unet_lora_layers=unet_lora_state_dict,
-                            safe_serialization=True,
-                        )
+                            StableDiffusionPipeline.save_lora_weights(
+                                save_directory=save_path,
+                                unet_lora_layers=unet_lora_state_dict,
+                                safe_serialization=True,
+                            )
 
-                        logger.info(f"Saved lora state to {save_path}")
+                            logger.info(f"Saved lora state to {save_path}")
 
             if global_step >= config.max_train_steps:
                 break
